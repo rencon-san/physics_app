@@ -6,28 +6,34 @@ import streamlit as st
 from PIL import Image
 
 # ==========================================
-# 1. 『良問の風』『名問の森』マスター設定 (旧帝大到達 = 100,000pt)
+# 1. 『良問の風 三訂版』『名問の森』マスター設定 (旧帝大到達 = 100,000pt)
 # ==========================================
 GOAL_POINTS = 100000
-DATA_FILE = "butsuri_progress_data.csv"
+DATA_FILE = "butsuri_progress_v3.csv"
 
 # 構成: (参考書名, 分野, 章名, 開始番号, 終了番号, 標準問題数, 章目標ポイント[総合ルート時])
-# 良問の風 (全154問: 小計 40,000 pt) + 名問の森 (全140問: 小計 60,000 pt) = 合計 100,000 pt
+# 良問の風 三訂版 (全154問: 小計 40,000 pt)
+#   - 力学: 1〜53 (53問)
+#   - 熱: 54〜70 (17問)
+#   - 波動: 71〜99 (29問)
+#   - 電磁気: 100〜142 (43問)
+#   - 原子: 143〜154 (12問)
+# 名問の森 (全140問: 小計 60,000 pt) = 合計 100,000 pt
 PHYSICS_CHAPTERS = [
-    # --- 良問の風（全154問：基礎〜標準・地方国公立/MARCH〜旧帝大基礎 = 40,000 pt） ---
-    ("良問の風", "力学", "良問 第1章 運動と力・剛体", 1, 18, 12, 4800),
-    ("良問の風", "力学", "良問 第2章 エネルギーと運動量", 19, 34, 11, 4200),
-    ("良問の風", "力学", "良問 第3章 円運動・単振動・万有引力", 35, 56, 14, 6000),
-    ("良問の風", "熱力学", "良問 第4章 熱と気体の法則", 57, 73, 12, 4500),
-    ("良問の風", "波動", "良問 第5章 波の性質・音波・光波", 74, 99, 18, 6500),
-    ("良問の風", "電磁気", "良問 第6章 電場とコンデンサー・直流", 100, 121, 15, 5500),
-    ("良問の風", "電磁気", "良問 第7章 電流と磁場・電磁誘導・交流", 122, 141, 13, 5500),
-    ("良問の風", "原子", "良問 第8章 原子物理・核反応（巻末含）", 142, 154, 9, 3000),
+    # --- 良問の風 三訂版（全154問：小計 40,000 pt） ---
+    ("良問の風", "力学", "良問 力学① 運動と力・剛体 (No.1〜18)", 1, 18, 12, 4600),
+    ("良問の風", "力学", "良問 力学② エネルギーと運動量 (No.19〜35)", 19, 35, 12, 4400),
+    ("良問の風", "力学", "良問 力学③ 円運動・単振動・万有引力 (No.36〜53)", 36, 53, 12, 5000),
+    ("良問の風", "熱", "良問 熱 熱と気体の法則 (No.54〜70)", 54, 70, 12, 4500),
+    ("良問の風", "波動", "良問 波動 波の性質・音波・光波 (No.71〜99)", 71, 99, 20, 7500),
+    ("良問の風", "電磁気", "良問 電磁気① 電場・コンデンサー・直流 (No.100〜121)", 100, 121, 15, 5500),
+    ("良問の風", "電磁気", "良問 電磁気② 電流と磁場・電磁誘導・交流 (No.122〜142)", 122, 142, 14, 5500),
+    ("良問の風", "原子", "良問 原子 原子物理・核反応 (No.143〜154)", 143, 154, 8, 3000),
 
-    # --- 名問の森（全140問：応用〜難関・旧帝大合格完成 = 60,000 pt） ---
+    # --- 名問の森（全140問：小計 60,000 pt） ---
     ("名問の森", "力学", "名問 第1章 力学I（運動・エネルギー・運動量）", 1, 22, 12, 9500),
     ("名問の森", "力学", "名問 第2章 力学II（慣性力・円運動・単振動・万有引力）", 23, 45, 12, 10500),
-    ("名問の森", "熱力学", "名問 第3章 熱力学（気体分子運動論・状態変化）", 46, 61, 9, 6500),
+    ("名問の森", "熱", "名問 第3章 熱（気体分子運動論・状態変化）", 46, 61, 9, 6500),
     ("名問の森", "波動", "名問 第4章 波動I（波の性質・定常波・ドップラー効果）", 62, 75, 8, 6000),
     ("名問の森", "波動", "名問 第5章 波動II（光の屈折・干渉・回折格子）", 76, 87, 7, 5000),
     ("名問の森", "電磁気", "名問 第6章 電磁気I（電場・コンデンサー・直流回路）", 88, 106, 10, 8000),
@@ -77,11 +83,11 @@ def build_master_dataframe() -> pd.DataFrame:
         for idx, q_no in enumerate(range(start_no, end_no + 1)):
             if book == "良問の風":
                 if idx < std_count:
-                    q_type = "良問・基本"
+                    q_type = "良問・標準"
                     default_lvl = 4 if idx < (std_count // 2) else 5
                     weight = 1.0
                 else:
-                    q_type = "良問・＊頻出"
+                    q_type = "良問・＊頻出/応用"
                     default_lvl = 6 if idx < total_q - 2 else 7
                     weight = 1.4
             else:  # 名問の森
@@ -174,7 +180,7 @@ def render_polar_chart_svg(chap_df: pd.DataFrame, target_ratio: float = 0.72) ->
 
     color_map = {
         "力学": ["#39D353", "#56D364", "#2DA44E", "#7CE38B", "#4AC26B"],
-        "熱力学": ["#FF7B72", "#FFA198", "#F85149"],
+        "熱": ["#FF7B72", "#FFA198", "#F85149"],
         "波動": ["#549EF7", "#79C0FF", "#388BFD"],
         "電磁気": ["#F7DF54", "#F5CD38", "#FFE875", "#E3B341"],
         "原子": ["#D2A8FF", "#BC8CFF", "#A371F7"]
@@ -186,7 +192,7 @@ def render_polar_chart_svg(chap_df: pd.DataFrame, target_ratio: float = 0.72) ->
     for frac in [0.2, 0.4, 0.6, 0.8]:
         svg.append(f'<circle cx="{cx}" cy="{cy}" r="{max_r * frac:.1f}" fill="none" stroke="#E2E0D8" stroke-width="1"/>')
 
-    field_counters = {"力学": 0, "熱力学": 0, "波動": 0, "電磁気": 0, "原子": 0}
+    field_counters = {"力学": 0, "熱": 0, "波動": 0, "電磁気": 0, "原子": 0}
     for i, (_, row) in enumerate(chap_df.iterrows()):
         start_deg = -90 + (i * 360 / n)
         end_deg = -90 + ((i + 1) * 360 / n)
@@ -234,7 +240,7 @@ def render_polar_chart_svg(chap_df: pd.DataFrame, target_ratio: float = 0.72) ->
 # ==========================================
 # 2. ページ設定 ＆ カスタムCSS（テキスト黒字統一）
 # ==========================================
-st.set_page_config(page_title="SIRUS - 良問の風・名問の森", page_icon="⚡", layout="centered")
+st.set_page_config(page_title="SIRUS - 良問の風(三訂版)・名問の森", page_icon="⚡", layout="centered")
 
 st.markdown("""
 <style>
@@ -457,13 +463,13 @@ st.markdown("""
 book_mode = st.selectbox(
     "📚 表示・対策モードを選択",
     [
-        "🔥 良問の風 ＋ 名問の森 総合ルート (全294問 / 100,000pt)",
-        "🍃 良問の風 単独モード (全154問 / 100,000pt換算)",
+        "🔥 良問の風(三訂版) ＋ 名問の森 総合ルート (全294問 / 100,000pt)",
+        "🍃 良問の風(三訂版) 単独モード (全154問 / 100,000pt換算)",
         "🌲 名問の森 単独モード (全140問 / 100,000pt換算)"
     ]
 )
 
-if "良問の風 単独" in book_mode:
+if "良問の風(三訂版) 単独" in book_mode:
     df_view = df[df["参考書"] == "良問の風"].copy()
     scale_factor = GOAL_POINTS / df_view["満点pt"].sum()
 elif "名問の森 単独" in book_mode:
@@ -540,7 +546,7 @@ with tab_home:
     </div>
     <div style="display:flex; justify-content:center; gap:12px; font-size:11px; font-weight:700; color:#000000; margin-bottom:6px;">
         <span>🟢力学</span>
-        <span>🔴熱力学</span>
+        <span>🔴熱</span>
         <span>🔵波動</span>
         <span>🟡電磁気</span>
         <span>🟣原子</span>
@@ -579,259 +585,4 @@ with tab_home:
             </div>
             <div style="font-size:11px; font-weight:800; color:#000000;">累計日数</div>
             <div style="font-size:22px; font-weight:900; margin-bottom:8px; color:#000000;">📅 <span class="hl-yellow">{study_days}</span></div>
-            <div style="font-size:11px; font-weight:800; color:#000000;">難易度合計</div>
-            <div style="font-size:22px; font-weight:900; color:#000000;">📊 <span class="hl-yellow">{total_difficulty}</span></div>
-        </div>
-        <div class="stack-wrapper">
-            <div class="stack-card" style="top:0px; left:24px; background:#F2F0E8;">
-                <div class="stack-tab">見直し</div>
-                <div class="date-badge" style="top:14px;">10/1</div>
-            </div>
-            <div class="stack-card" style="top:10px; left:12px; background:#F8F7F2;">
-                <div class="stack-tab">見直し</div>
-            </div>
-            <div class="stack-card" style="top:20px; left:0px; background:#FFFFFF;">
-                <div class="stack-tab">見直し</div>
-                <div class="date-badge" style="top:36px;">{recent_date}</div>
-                <div style="margin-top:8px; font-weight:800; color:#000000;">要復習: {len(review_df)}問</div>
-                <div style="font-size:10px; color:#000000; margin-top:4px; line-height:1.35;">
-                    {stack_preview}
-                </div>
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-# ==========================================
-# タブ2：🏋️ トレーニング
-# ==========================================
-with tab_train:
-    st.subheader("🏋️ 『良問の風』『名問の森』問題記録 ＆ 苦手克服メモ")
-
-    col_b, col_n = st.columns([1, 1])
-    with col_b:
-        book_options = ["良問の風", "名問の森"]
-        sel_book = st.selectbox(
-            "参考書を選択",
-            book_options,
-            index=book_options.index(st.session_state.selected_book)
-        )
-        st.session_state.selected_book = sel_book
-
-    max_q_num = 154 if sel_book == "良問の風" else 140
-    default_q_num = min(int(st.session_state.selected_q_no), max_q_num)
-
-    with col_n:
-        q_number = st.number_input(
-            f"問題番号を選択 (No.1 〜 No.{max_q_num})",
-            min_value=1,
-            max_value=max_q_num,
-            value=default_q_num,
-            step=1
-        )
-        st.session_state.selected_q_no = q_number
-
-    q_row = df[(df["参考書"] == sel_book) & (df["問題番号"] == q_number)].iloc[0]
-
-    st.markdown(f"""
-    <div style="background:#FFFFFF; border:1.8px solid #000000; box-shadow:3px 4px 0px #000000; padding:14px; margin-bottom:16px; color:#000000;">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span style="font-size:12px; font-weight:800; color:#000000;">【{q_row['参考書']}】 {q_row['分野']} ｜ {q_row['章']}</span>
-            <span style="background:#7CE38B; border:1.5px solid #000000; border-radius:999px; padding:2px 10px; font-size:12px; font-weight:900; color:#000000;">
-                基準満点 {q_row['満点pt']} pt
-            </span>
-        </div>
-        <div style="font-size:28px; font-weight:900; margin:4px 0; color:#000000;">
-            {q_row['参考書']} No.{q_number:02d} <span style="font-size:16px;">（{q_row['区分']}）</span>
-        </div>
-        <div style="font-size:13px; font-weight:700; color:#000000;">
-            現在の状態: <span class="hl-yellow">{q_row['解答状況']}</span>
-            （獲得済: {q_row['獲得pt']} pt ／ 周回数: {q_row['周回数']}周 ／ 最終学習日: {q_row['最終学習日']}）
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    status_choice = st.radio(
-        "今回の解答状況を選択",
-        ["解けた", "一部解けた", "解けなかった"],
-        horizontal=True
-    )
-    has_star = st.checkbox("誌面に「＊（重要・頻出）」マークまたは「論述・描図」がある問題")
-
-    st.markdown("#### 📝 物理・解法のコツ ＆ つまずきメモ")
-    existing_tags = [t for t in str(q_row["原因タグ"]).split(",") if t in CAUSE_TAGS]
-    selected_tags = st.multiselect(
-        "🏷️ つまずき原因・特徴タグ（複数選択可）",
-        options=CAUSE_TAGS,
-        default=existing_tags
-    )
-
-    trouble_memo = st.text_area(
-        "❓ 分からなかった箇所・ミスした原因",
-        value=str(q_row["つまずきメモ"]) if str(q_row["つまずきメモ"]) != "nan" else "",
-        placeholder="例：(3)の動く台の上での小物体の運動で、慣性力の向きと束縛条件の加速度成分を間違えた。",
-        height=80
-    )
-
-    tip_memo = st.text_area(
-        "💡 解法のコツ・次回の着眼点",
-        value=str(q_row["解法のコツ"]) if str(q_row["解法のコツ"]) != "nan" else "",
-        placeholder="例：外力の水平成分が0なら『水平方向の運動量保存則』＋『力学的エネルギー保存則』の連立が鉄板！",
-        height=80
-    )
-
-    with st.expander("📸 問題画像のAI難易度判定（Lv.1〜10）を使う"):
-        img_mode = st.radio("画像の入力方法", ["ファイル/写真選択", "スマホカメラで直接撮影"], horizontal=True)
-        if img_mode == "スマホカメラで直接撮影":
-            uploaded_img = st.camera_input("問題を撮影してください")
-        else:
-            uploaded_img = st.file_uploader("問題画像を選択", type=["png", "jpg", "jpeg"])
-
-        current_lvl = int(q_row["レベル"])
-        if uploaded_img is not None:
-            img = Image.open(uploaded_img)
-            if st.button("🔍 画像から難易度レベル(1〜10)を自動判定", use_container_width=True):
-                current_lvl = evaluate_physics_image(img, sel_book, q_row["区分"], has_star)
-                st.success(f"AI判定完了：{sel_book} No.{q_number} の難易度は **Lv.{current_lvl}** です！")
-
-    final_lvl = st.slider("問題レベル (1〜10)", 1, 10, value=int(q_row["レベル"]))
-    level_factor = 0.8 + (final_lvl / int(q_row["レベル"])) * 0.2
-    new_earned_pt = int(round(q_row["満点pt"] * min(level_factor, 1.0) * STATUS_MULTIPLIER[status_choice]))
-
-    if st.button(f"✅ {sel_book} No.{q_number} の学習結果とメモを保存（獲得: {new_earned_pt} pt）", type="primary", use_container_width=True):
-        idx = df.index[(df["参考書"] == sel_book) & (df["問題番号"] == q_number)][0]
-        df.at[idx, "レベル"] = final_lvl
-        df.at[idx, "解答状況"] = status_choice
-        df.at[idx, "獲得pt"] = new_earned_pt
-        df.at[idx, "周回数"] = int(q_row["周回数"]) + 1
-        df.at[idx, "最終学習日"] = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")
-        df.at[idx, "原因タグ"] = ",".join(selected_tags)
-        df.at[idx, "つまずきメモ"] = trouble_memo.strip()
-        df.at[idx, "解法のコツ"] = tip_memo.strip()
-        save_data(df)
-        st.toast(f"{sel_book} No.{q_number} を保存しました！")
-        st.rerun()
-
-# ==========================================
-# タブ3：📄 解き直し・メモ
-# ==========================================
-with tab_review:
-    st.subheader("🗂️ 苦手対策・物理法則メモノート")
-
-    col_f1, col_f2 = st.columns(2)
-    with col_f1:
-        filter_mode = st.selectbox(
-            "表示フィルター",
-            ["📝 メモがある問題のみ", "⚠️ 要復習（一部解けた・解けなかった）", "すべて表示"]
-        )
-    with col_f2:
-        tag_filter = st.selectbox("原因タグで絞り込み", ["すべて"] + CAUSE_TAGS)
-
-    keyword = st.text_input("🔍 キーワード検索（例：単振動、ドップラー効果、電磁誘導、熱効率など）")
-
-    filtered_df = df_view.copy()
-    if filter_mode == "📝 メモがある問題のみ":
-        filtered_df = filtered_df[
-            (filtered_df["つまずきメモ"].str.strip() != "")
-            | (filtered_df["解法のコツ"].str.strip() != "")
-            | (filtered_df["原因タグ"].str.strip() != "")
-        ]
-    elif filter_mode == "⚠️ 要復習（一部解けた・解けなかった）":
-        filtered_df = filtered_df[filtered_df["解答状況"].isin(["一部解けた", "解けなかった"])]
-
-    if tag_filter != "すべて":
-        filtered_df = filtered_df[filtered_df["原因タグ"].str.contains(tag_filter, na=False, regex=False)]
-
-    if keyword.strip():
-        kw = keyword.strip()
-        filtered_df = filtered_df[
-            filtered_df["つまずきメモ"].str.contains(kw, case=False, na=False)
-            | filtered_df["解法のコツ"].str.contains(kw, case=False, na=False)
-            | filtered_df["章"].str.contains(kw, case=False, na=False)
-        ]
-
-    if filtered_df.empty:
-        st.info("条件に一致するメモ・復習問題はまだありません。")
-    else:
-        st.caption(f"該当件数: **{len(filtered_df)} 問**")
-        for _, m_row in filtered_df.iterrows():
-            q_no = int(m_row["問題番号"])
-            b_name = m_row["参考書"]
-            tags_list = [t for t in str(m_row["原因タグ"]).split(",") if t]
-            tags_html = "".join([f'<span class="memo-tag-chip">🏷️ {t}</span>' for t in tags_list])
-
-            trouble_html = (
-                f'<div class="memo-box-trouble"><strong>❓ つまずき原因:</strong><br>{m_row["つまずきメモ"]}</div>'
-                if str(m_row["つまずきメモ"]).strip() else ""
-            )
-            tip_html = (
-                f'<div class="memo-box-tip"><strong>💡 解法のコツ:</strong><br>{m_row["解法のコツ"]}</div>'
-                if str(m_row["解法のコツ"]).strip() else ""
-            )
-
-            st.markdown(f"""
-            <div class="memo-card">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                    <span style="font-size:11px; font-weight:800; color:#000000;">【{b_name}】 {m_row['分野']} ｜ {m_row['章']}</span>
-                    <span style="font-size:11px; font-weight:800; background:#EEECE2; border:1px solid #000000; padding:1px 8px; border-radius:999px; color:#000000;">
-                        {m_row['解答状況']}（{m_row['周回数']}周）
-                    </span>
-                </div>
-                <div style="display:flex; justify-content:space-between; align-items:baseline;">
-                    <div style="font-size:22px; font-weight:900; color:#000000;">{b_name} No.{q_no:02d} <span style="font-size:13px;">（{m_row['区分']} / Lv.{m_row['レベル']}）</span></div>
-                    <div style="font-size:11px; color:#000000;">最終学習: {m_row['最終学習日']}</div>
-                </div>
-                <div style="margin-top:4px;">{tags_html}</div>
-                {trouble_html}
-                {tip_html}
-            </div>
-            """, unsafe_allow_html=True)
-
-            if st.button(f"✏️ {b_name} No.{q_no:02d} をトレーニングで開く", key=f"edit_memo_{m_row['ID']}"):
-                st.session_state.selected_book = b_name
-                st.session_state.selected_q_no = q_no
-                st.toast(f"{b_name} No.{q_no} をセットしました！")
-
-    st.divider()
-    with st.expander("📚 全16章（良問8章＋名問8章）進捗サマリー ＆ 全問題一覧を開く"):
-        st.dataframe(chap_summary, use_container_width=True, hide_index=True)
-        filter_chap = st.selectbox("章で絞り込み", ["すべて"] + [c[2] for c in PHYSICS_CHAPTERS])
-        view_list_df = df if filter_chap == "すべて" else df[df["章"] == filter_chap]
-        st.dataframe(view_list_df, use_container_width=True, hide_index=True)
-
-# ==========================================
-# タブ4：👤 マイページ
-# ==========================================
-with tab_mypage:
-    st.subheader("👤 志望校設定 ＆ 分野別グラフ・データ管理")
-    new_univ = st.text_input("目標大学・学部名", value=st.session_state.target_univ)
-    if new_univ != st.session_state.target_univ:
-        st.session_state.target_univ = new_univ
-        st.rerun()
-
-    st.markdown("#### 📊 物理5分野別 進捗率 (%)")
-    field_grp = df_view.groupby("分野", sort=False).agg({"獲得pt": "sum", "満点pt": "sum"}).reset_index()
-    field_grp["進捗率(%)"] = (field_grp["獲得pt"] / field_grp["満点pt"] * 100).round(2)
-    st.bar_chart(field_grp.set_index("分野")["進捗率(%)"])
-
-    st.markdown("#### 📚 参考書別 進捗率 (%)")
-    book_grp = df.groupby("参考書", sort=False).agg({"獲得pt": "sum", "満点pt": "sum"}).reset_index()
-    book_grp["進捗率(%)"] = (book_grp["獲得pt"] / book_grp["満点pt"] * 100).round(2)
-    st.bar_chart(book_grp.set_index("参考書")["進捗率(%)"])
-
-    st.divider()
-    csv_bytes = df.to_csv(index=False).encode("utf-8-sig")
-    st.download_button(
-        label="📥 進捗・メモデータのバックアップ (CSV)",
-        data=csv_bytes,
-        file_name="butsuri_progress_backup.csv",
-        mime="text/csv",
-        use_container_width=True
-    )
-    restore_file = st.file_uploader("📤 バックアップから復元", type=["csv"])
-    if restore_file is not None:
-        if st.button("データを復元する", use_container_width=True):
-            df_restored = pd.read_csv(restore_file)
-            save_data(df_restored)
-            st.success("復元しました！")
-            st.rerun()
+            <div style="font-size:11px; font-weight:800; color:#000000;"
